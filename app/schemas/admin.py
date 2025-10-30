@@ -11,6 +11,7 @@ class AdminLogin(AdminBase):
 
 class AdminOut(AdminBase):
     id: int
+    is_admin: bool
 
     class Config:
         from_attributes = True
