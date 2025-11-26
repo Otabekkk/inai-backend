@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 from app.models.admin import Admin
 
-# Удалить админа
+# Удалить админа (id)
 def delete_user(db: Session, admin_id: int):
     admin = db.query(Admin).filter(Admin.id == admin_id).first()
     if not admin:
@@ -11,7 +10,7 @@ def delete_user(db: Session, admin_id: int):
     db.commit()
     return True
 
-# Удалить админа по email
+# Удалить админа (email)
 def delete_user_by_email(db: Session, admin_email: str):
     admin = db.query(Admin).filter(Admin.email == admin_email).first()
     if not admin:

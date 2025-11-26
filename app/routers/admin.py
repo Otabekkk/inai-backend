@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.models.admin import Admin
 from app.schemas.admin import AdminCreate, AdminOut
+from app.schemas.news import NewsCreate, NewsOut
 from app.dependencies import get_current_admin
 from app.utils.auth import hash_pas
-from app.utils.crud import delete_user, delete_user_by_email, get_all_admins
+from app.utils.save_news import save_upload_file
+from app.crud.admin_crud import delete_user, delete_user_by_email, get_all_admins
+from app.crud.news_crud import create_news, get_news
+from fastapi import UploadFile, File
+from pathlib import Path
 import logging
 
 
@@ -18,12 +23,13 @@ def read_admin_me(admin: Admin = Depends(get_current_admin)):
     return admin
 
 
+# ------------------------- РАБОТА С УЧЕТКАМИ АДМИНОВ ------------------------- #
 @router.post('/users', response_model = AdminOut)
 def create_admin(admin: AdminCreate, current_admin: Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     logger.info(f"Creating new admin by {current_admin.email}")
     db_admin = db.query(Admin).filter(Admin.email == admin.email).first()
     if db_admin:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail = 'Email already registered')
     
     hashed_pas = hash_pas(admin.password)
     db_admin = Admin(email = admin.email, hashed_pas = hashed_pas)
@@ -53,7 +59,39 @@ def delete_admin_by_email(admin_email: str, db: Session = Depends(get_db), curre
 
 @router.get('/users')
 def get_admins(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
-    logger.info(f"Getting all admins by {current_admin.email}")
+    logger.info(f'Getting all admins by {current_admin.email}')
 
     admins = get_all_admins(db)
     return admins
+# ----------------------------------------------------------------------------- #
+
+
+# ---------------------------------- НОВОСТИ ---------------------------------- #
+@router.post('/news', response_model = NewsOut)
+def news_create( 
+    db: Session = Depends(get_db), 
+    current_admin: Admin = Depends(get_current_admin),
+    title: str = Form(...),
+    content: str = Form(...),
+    file: UploadFile = File(None)
+    ):
+
+    image_path = None
+    
+    if file:
+        image_path = save_upload_file(file, Path('app/media/news'))
+
+    logger.info(f'Creating news by {current_admin}')
+
+    db_news = create_news(db, title, content, image_path)
+
+    return db_news
+
+
+@router.get('/news')
+def get_all_news(db: Session = Depends(get_db)):
+    logger.info('Getting all news')
+
+    db_news = get_news(db)
+
+    return db_news
