@@ -19,3 +19,13 @@ def create_news(db: Session, title: str, content: str, image_path: str = None):
     db.refresh(db_news)
 
     return db_news
+
+
+# Удалить новость
+def delete_news(db: Session, id: int):
+    news = db.query(News).filter(News.id == id).first()
+    if not news:
+        return False
+    db.delete(news)
+    db.commit()
+    return True
