@@ -8,7 +8,7 @@ from app.dependencies import get_current_admin
 from app.utils.auth import hash_pas
 from app.utils.save_news import save_upload_file
 from app.crud.admin_crud import delete_user, delete_user_by_email, get_all_admins
-from app.crud.news_crud import create_news, get_news
+from app.crud.news_crud import create_news, get_all_news,  delete_news_by_id
 from fastapi import UploadFile, File
 from pathlib import Path
 import logging
@@ -73,6 +73,7 @@ def news_create(
     current_admin: Admin = Depends(get_current_admin),
     title: str = Form(...),
     content: str = Form(...),
+    published: bool = Form(...),
     file: UploadFile = File(None)
     ):
 
@@ -81,17 +82,29 @@ def news_create(
     if file:
         image_path = save_upload_file(file, Path('app/media/news'))
 
-    logger.info(f'Creating news by {current_admin}')
+    logger.info(f'Creating news by {current_admin.email}')
 
-    db_news = create_news(db, title, content, image_path)
+    db_news = create_news(db, title, content, image_path, published)
 
     return db_news
 
 
 @router.get('/news')
-def get_all_news(db: Session = Depends(get_db)):
-    logger.info('Getting all news')
+def get_news(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
+    logger.info(f'Getting all news by {current_admin.email}')
 
-    db_news = get_news(db)
+    db_news = get_all_news(db)
 
     return db_news
+
+
+@router.delete('/news/{news_id}')
+def delete_news(news_id: int, db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
+    logger.info(f"Deleting news {news_id} by {current_admin.email}")
+    success = delete_news_by_id(db, news_id)
+    if not success:
+        raise HTTPException(status_code=404, detail='News not found!')
+    return {'message': 'News deleted successfully'}
+
+# TODO
+# Написать put роут для новостей

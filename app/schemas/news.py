@@ -12,6 +12,7 @@ class NewsOut(NewsBase):
     id: int
     title: str
     content: str
+    published: bool
     created_at: datetime
 
     class Config:
