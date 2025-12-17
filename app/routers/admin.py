@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.models.admin import Admin
+from app.models.news import News
 from app.schemas.admin import AdminCreate, AdminOut
 from app.schemas.news import NewsCreate, NewsOut
 from app.dependencies import get_current_admin
 from app.utils.auth import hash_pas
 from app.utils.save_news import save_upload_file
 from app.crud.admin_crud import delete_user, delete_user_by_email, get_all_admins
-from app.crud.news_crud import create_news, get_all_news,  delete_news_by_id
+from app.crud.news_crud import create_news, get_all_news,  delete_news_by_id, get_news_by_id
 from fastapi import UploadFile, File
 from pathlib import Path
 import logging
@@ -76,13 +77,12 @@ def news_create(
     published: bool = Form(...),
     file: UploadFile = File(None)
     ):
-
+    logger.info(f'Creating news by {current_admin.email}')
+    
     image_path = None
     
     if file:
         image_path = save_upload_file(file, Path('app/media/news'))
-
-    logger.info(f'Creating news by {current_admin.email}')
 
     db_news = create_news(db, title, content, image_path, published)
 
@@ -108,3 +108,32 @@ def delete_news(news_id: int, db: Session = Depends(get_db), current_admin: Admi
 
 # TODO
 # Написать put роут для новостей
+
+@router.put('/news/{news_id}', response_model = NewsOut)
+def update_news(
+    news_id: int, 
+    db: Session = Depends(get_db), 
+    current_admin: Admin = Depends(get_current_admin),
+    title: str = Form(...),
+    content: str = Form(...),
+    published: bool = Form(...),
+    file: UploadFile = File(None)):
+
+    logger.info(f"Editing news {news_id} by {current_admin.email}")
+
+    db_news = get_news_by_id(db, news_id)
+    if not db_news:
+        raise HTTPException(status_code=404, detail='Новость не найдена')
+    
+    image_path = db_news.image_url
+    if file:
+        image_path = save_upload_file(file, Path('app/media/news'))
+
+    db_news.title = title
+    db_news.content = content
+    db_news.image_url = image_path
+
+
+    db.commit()
+    db.refresh(db_news)
+    return db_news

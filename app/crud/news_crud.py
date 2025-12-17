@@ -9,6 +9,11 @@ def get_all_news(db: Session):
 
     return news
 
+def get_news_by_id(db: Session, news_id: int):
+    news = db.query(News).filter(News.id == news_id).first()
+
+    return news
+
 
 # Получить опубликованные новости
 def get_published_news(db: Session):
@@ -16,7 +21,7 @@ def get_published_news(db: Session):
 
     return news
 
-def get_published_news_by_id(db: Session, news_id):
+def get_published_news_by_id(db: Session, news_id: int):
     news = db.query(News).filter(News.published == True, News.id == news_id).first()
     
     return news
